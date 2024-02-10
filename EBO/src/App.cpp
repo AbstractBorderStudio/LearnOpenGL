@@ -53,7 +53,7 @@ int main()
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// create window and context
-	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "EBO - press W for wireframe and F for fill", NULL, NULL);
 	if (window == NULL)
 	{
 		std::cout << "Failed to create GLFW window" << std::endl;
@@ -154,19 +154,19 @@ int main()
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(0);
 
+	// set wireframe
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
 	while (!glfwWindowShouldClose(window))
 	{
 		glClearColor(1.0, 1.0, 1.0, 1.0);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		// set wireframe
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		// set the shader program
 		glUseProgram(shaderProgram);
 		// bind current VAO
 		glBindVertexArray(VAO);
-		// draw
+		// draw the six indices
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		glfwSwapBuffers(window);
@@ -180,6 +180,7 @@ int main()
 	// glfw :: terminate, clearing all previously allocated GLFW resources.
 	glfwTerminate();
 
+	std::cout << "LOG::APP::CLOSED_SUCCESS\n";
 	exit(EXIT_SUCCESS); // app closed successfully
 }
 
@@ -195,5 +196,15 @@ void input_keyCallback(GLFWwindow* window, int key, int scancode, int action, in
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 	{
 		glfwSetWindowShouldClose(window, true);
+	}
+
+	// switch between wireframe and fill
+	if (key == GLFW_KEY_F && action == GLFW_PRESS)
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+	if (key == GLFW_KEY_W && action == GLFW_PRESS)
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	}
 }
