@@ -6,162 +6,212 @@
 #include <GLFW/glfw3.h>
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void RenderLoop(GLFWwindow* window);
-void Draw(GLFWwindow* window);
-void inptu_keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void input_keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+
+// vertices
+const float vertices[] = {
+	 0.5f, -0.5f, 0.0f,  // top right
+	 0.0f,  0.5f, 0.0f,  // bottom right
+	-0.5f, -0.5f, 0.0f  // bottom left
+};
+const unsigned int indices[] = {  // note that we start from 0!
+	0, 1, 2   // first triangle
+};
+
+// shaders sources
+const char* vertexShaderSource = "#version 330 core\n"
+	"layout (location = 0) in vec3 aPos;\n"
+	"out vec4 vertexColor;\n"
+	"void main()\n"
+	"{\n"
+	"   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
+	"   vertexColor = vec4(1.0, 0.0, 0.0, 1.0);\n"
+	"}\0";
+
+const char* fragmentShaderSource = "#version 330 core\n"
+	"in vec4 vertexColor;\n"
+	"out vec4 FragColor;\n"
+	"uniform vec2 redVal;\n"
+	"void main()\n"
+	"{\n"
+	"   FragColor = vec4(redVal, 0.0, 1.0);\n"
+	"}\0";
 
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
-// data
-float vertices[] = {
-//    x,     y     z    // in NDC
-    -0.5f, -0.5f, 0.0f, // vertex 1#
-     0.5f, -0.5f, 0.0f, // vertex 2#
-     0.0f,  0.5f, 0.0f  // vertex 3#
-};
-
-// shaders
-const char* vertexShaderSource = "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;\n"
-    "void main()\n"
-    "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n"
-    "}\0";
-
-const char* fragmentShaderSource = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "void main()\n"
-    "{\n"
-    "   FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n"
-    "}\0";
-
-int main(void)
+int main()
 {
-    // init glfw
-    if (!glfwInit())
-    {
-        std::cerr << "Could not load GLFW" << std::endl;
-        exit(EXIT_FAILURE);
-    }
+	// glfw :: initialization
+	if (!glfwInit())
+	{
+		std::cerr << "ERROR::GLFW::INITIALIZATION_FAILED\n";
+	}
 
-    // glfw settings
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	// glfw :: settings
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // create window and context
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-    if (window == NULL)
-    {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        exit(EXIT_FAILURE);
-    }
-    glfwMakeContextCurrent(window);
-    // set window resize callback
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    // kayboard input callback
-    glfwSetKeyCallback(window, inptu_keyCallback);
+	// create window and context
+	GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "EBO - press W for wireframe and F for fill", NULL, NULL);
+	if (window == NULL)
+	{
+		std::cout << "Failed to create GLFW window" << std::endl;
+		glfwTerminate();
+		exit(EXIT_FAILURE);
+	}
+	glfwMakeContextCurrent(window);
+	// set window resize callback
+	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+	// kayboard input callback
+	glfwSetKeyCallback(window, input_keyCallback);
 
-    // load GLAD
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        exit(EXIT_FAILURE);
-    }
+	// load GLAD
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	{
+		std::cout << "Failed to initialize GLAD" << std::endl;
+		exit(EXIT_FAILURE);
+	}
 
-    // set OpenGL Viewport size
-    glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+	// set OpenGL Viewport size
+	glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
-    // main loop
-    RenderLoop(window);
+	// status check variables
+	GLint success;
+	char infoLog[512];
 
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    glfwTerminate();
+	// create and compile shaders
+	// vertex
+	GLuint vertexShader;
+	vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+	glCompileShader(vertexShader);
 
-    // app closed successfully
-    exit(EXIT_SUCCESS);
+	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+	if (!success)
+	{
+		glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+	}
+	else
+	{
+		std::cout << "LOG::SHADER::VERTEX::COMPILATION_SUCCESS\n";
+	}
+	// fragment
+	GLuint fragmentShader;
+	fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+	glCompileShader(fragmentShader);
+
+	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+	if (!success)
+	{
+		glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+		std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+	}
+	else
+	{
+		std::cout << "LOG::SHADER::FRAGMENT::COMPILATION_SUCCESS\n";
+	}
+
+	// create shader program
+	GLuint shaderProgram;
+	shaderProgram = glCreateProgram();
+	// link vertex and fragment shaders
+	glAttachShader(shaderProgram, vertexShader);
+	glAttachShader(shaderProgram, fragmentShader);
+	glLinkProgram(shaderProgram);
+
+	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+	if (!success) {
+		glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+		std::cout << "LOG::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+	}
+	else
+	{
+		std::cout << "LOG::SHADER::PROGRAM::LINKING_SUCCESS\n";
+	}
+
+	// delete shader objects
+	glDeleteShader(vertexShader);
+	glDeleteShader(fragmentShader);
+
+	// generate buffers
+	GLuint VAO, VBO, EBO;
+	glGenVertexArrays(1, &VAO);
+	glGenBuffers(1, &VBO);
+	glGenBuffers(1, &EBO);
+
+	// bind VAO
+	glBindVertexArray(VAO);
+	// setup VBO
+	glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	// setup EBO
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+	// setup vertex attrib
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	// set wireframe
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	while (!glfwWindowShouldClose(window))
+	{
+		glClearColor(1.0, 1.0, 1.0, 1.0);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		float currTime = glfwGetTime();
+		float newVal[] = { sin(currTime * 10.0f) / 2.0f + 0.5f, cos(currTime * 10.0f) / 2.0f + 0.5f };
+		int redValUniform = glGetUniformLocation(shaderProgram, "redVal");
+		glUniform2f(redValUniform, newVal[0], newVal[1]);
+
+		// set the shader program
+		glUseProgram(shaderProgram);
+		// bind current VAO
+		glBindVertexArray(VAO);
+		// draw the six indices
+		glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+
+		glfwSwapBuffers(window);
+		glfwPollEvents();
+	}
+
+	glDeleteVertexArrays(1, &VAO);
+	glDeleteBuffers(1, &VBO);
+	glDeleteProgram(shaderProgram);
+
+	// glfw :: terminate, clearing all previously allocated GLFW resources.
+	glfwTerminate();
+
+	std::cout << "LOG::APP::CLOSED_SUCCESS\n";
+	exit(EXIT_SUCCESS); // app closed successfully
 }
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    // update 
-    glViewport(0, 0, width, height);
-    Draw(window);
+	// update 
+	glViewport(0, 0, width, height);
 }
 
-void RenderLoop(GLFWwindow* window)
+void input_keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    // create Vertex Buffer in the GPU
-    unsigned int VBO;
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	// input
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+	{
+		glfwSetWindowShouldClose(window, true);
+	}
 
-    // create and compile shaders
-    GLint success;
-    char infoLog[512];
-    // vertex
-    unsigned int vertexShader;
-    vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-    else
-    {
-        std::cout << "LOG::SHADER::VERTEX::COMPILATION_SUCCESS\n";
-    }
-    // fragment
-    unsigned int fragmentShader;
-    fragmentShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-    else
-    {
-        std::cout << "LOG::SHADER::FRAGMENT::COMPILATION_SUCCESS\n";
-    }
-
-    // render loop
-    while (!glfwWindowShouldClose(window))
-    {
-        // render
-        Draw(window);
-
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        glfwPollEvents();
-    }
-}
-
-void Draw(GLFWwindow* window)
-{
-    // clear frame buffer
-    glClear(GL_COLOR_BUFFER_BIT);
-    // set frame buffer color
-    glClearColor(1.0, 1.0, 1.0, 1.0);
-
-    // swap buffer
-    glfwSwapBuffers(window);
-}
-
-void inptu_keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-    // input
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-    {
-        glfwSetWindowShouldClose(window, true);
-    }
+	// switch between wireframe and fill
+	if (key == GLFW_KEY_F && action == GLFW_PRESS)
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+	if (key == GLFW_KEY_W && action == GLFW_PRESS)
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
 }

@@ -19,8 +19,8 @@ const float vertices[] = {
 };
 const unsigned int indices[] = {  // note that we start from 0!
 	0, 1, 3,   // first triangle
-	1, 2, 4,
-	3, 4, 5
+	1, 2, 4,   // second
+	3, 4, 5    // third
 };
 
 // shaders sources
@@ -169,7 +169,7 @@ int main()
 		glUseProgram(shaderProgram);
 		// bind current VAO
 		glBindVertexArray(VAO);
-		// draw the six indices
+		// draw the nine indices (three triangles)
 		glDrawElements(GL_TRIANGLES, 9, GL_UNSIGNED_INT, 0);
 
 		glfwSwapBuffers(window);
