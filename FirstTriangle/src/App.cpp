@@ -7,8 +7,8 @@
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void RenderLoop(GLFWwindow* window);
-void Draw(GLFWwindow* window);
-void inptu_keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void Draw(GLFWwindow* window, GLuint shaderProgram, GLuint VAO);
+void input_keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
@@ -63,7 +63,7 @@ int main(void)
     // set window resize callback
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     // kayboard input callback
-    glfwSetKeyCallback(window, inptu_keyCallback);
+    glfwSetKeyCallback(window, input_keyCallback);
 
     // load GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
@@ -88,22 +88,37 @@ int main(void)
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     // update 
-    glViewport(0, 0, width, height);
-    Draw(window);
+    glViewport(0, 0, width, height);    
 }
 
 void RenderLoop(GLFWwindow* window)
 {
-    // create Vertex Buffer in the GPU
-    unsigned int VBO;
-    glGenBuffers(1, &VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // create Vertex Array Object
+    GLuint VAO;
+    glGenVertexArrays(1, &VAO);
 
-    // create and compile shaders
+    // create Vertex Buffer in the GPU
+    GLuint VBO;
+    glGenBuffers(1, &VBO);
+
+
+    // bind VAO :: everything after that is related to this VAO ::
+    glBindVertexArray(VAO);
+    // bind VBO
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // copy data inside the VBO
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    // setup Vertex Attrib pointers
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // status check variables
     GLint success;
     char infoLog[512];
+    
+    // create and compile shaders
     // vertex
-    unsigned int vertexShader;
+    GLuint vertexShader;
     vertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
     glCompileShader(vertexShader);
@@ -119,8 +134,8 @@ void RenderLoop(GLFWwindow* window)
         std::cout << "LOG::SHADER::VERTEX::COMPILATION_SUCCESS\n";
     }
     // fragment
-    unsigned int fragmentShader;
-    fragmentShader = glCreateShader(GL_VERTEX_SHADER);
+    GLuint fragmentShader;
+    fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
     glCompileShader(fragmentShader);
 
@@ -133,31 +148,61 @@ void RenderLoop(GLFWwindow* window)
     else
     {
         std::cout << "LOG::SHADER::FRAGMENT::COMPILATION_SUCCESS\n";
+    }   
+
+    // create shader program
+    GLuint shaderProgram;
+    shaderProgram = glCreateProgram();
+    // link vertex and fragment shaders
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        std::cout << "LOG::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
     }
+    else
+    {
+        std::cout << "LOG::SHADER::PROGRAM::LINKING_SUCCESS\n";
+    }
+
+    // delete shader objects
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
 
     // render loop
     while (!glfwWindowShouldClose(window))
     {
         // render
-        Draw(window);
+        Draw(window, shaderProgram, VAO);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         glfwPollEvents();
     }
+
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteProgram(shaderProgram);
 }
 
-void Draw(GLFWwindow* window)
+void Draw(GLFWwindow* window, GLuint shaderProgram, GLuint VAO)
 {
     // clear frame buffer
     glClear(GL_COLOR_BUFFER_BIT);
     // set frame buffer color
     glClearColor(1.0, 1.0, 1.0, 1.0);
 
+    glUseProgram(shaderProgram);
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+
     // swap buffer
     glfwSwapBuffers(window);
 }
 
-void inptu_keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void input_keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     // input
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
