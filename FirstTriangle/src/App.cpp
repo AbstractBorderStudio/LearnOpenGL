@@ -108,7 +108,7 @@ void RenderLoop(GLFWwindow* window)
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     // copy data inside the VBO
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    // setup Vertex Attrib pointers
+    // setup Vertex Attrib pointers to pass data to the GPU
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
