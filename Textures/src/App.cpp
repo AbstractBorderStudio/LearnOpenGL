@@ -5,6 +5,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <Shader.h>
+#include "stb_image.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void RenderLoop(GLFWwindow* window);
@@ -17,13 +18,15 @@ const unsigned int SCR_HEIGHT = 600;
 
 // data
 float vertices[] = {
-    // positions         // colors
-     0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,   // bottom right
-    -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,   // bottom left
-     0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f    // top
+    // positions          // colors           // texture coords
+     0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+     0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+    -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+    -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
 };
 const unsigned int indices[] = {  // note that we start from 0!
     0, 1, 2,   // first triangle
+    0, 2, 3
 };
 
 int main(void)
@@ -82,6 +85,28 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 void RenderLoop(GLFWwindow* window)
 {
+    // generating a texture
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    // loading texture source
+    int width, height, nChannels;
+    const char* path = "./resources/textures/container.jpg";
+    unsigned char* data = stbi_load(path, &width, &height, &nChannels, 0);
+    if (data)
+    {
+        // creating the texture from the source
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+        // creating the mipmap for the texture
+        glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    else
+    {
+        std::cout << "Failed to load Texture" << std::endl;
+    }
+
+
     // create Vertex Array Object
     GLuint VAO, VBO, EBO;
     glGenVertexArrays(1, &VAO);
@@ -101,21 +126,26 @@ void RenderLoop(GLFWwindow* window)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
     // setup Vertex Attrib pointers to pass POSITION DATA to the GPU
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     // setup Vertex Attrib pointers to pass COLOR DATA to the GPU
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+    // set attrib pointer per location 2 for texPosition
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     // status check variables
     GLint success;
     char infoLog[512];
-    
+
+
     // create shader
     Shader shader(
-        "./resources/shaders/vert.vs", 
+        "./resources/shaders/vert.vs",
         "./resources/shaders/frag.fs"
     );
+
 
     // render loop
 
@@ -128,6 +158,8 @@ void RenderLoop(GLFWwindow* window)
         glfwPollEvents();
     }
 
+    // cleanup
+    glDeleteTextures(1, &texture);
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
 }
@@ -146,7 +178,7 @@ void Draw(GLFWwindow* window, Shader shader, GLuint VAO)
     val = glfwGetTime();
 
     glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     // swap buffer
     glfwSwapBuffers(window);
